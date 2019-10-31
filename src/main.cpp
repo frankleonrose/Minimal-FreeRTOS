@@ -1,19 +1,35 @@
-
-#include <sam.h>
 #include <FreeRTOS.h>
 #include "task.h"
 
-#define LED_PORT PORT_PA17
+#if defined(ENV_1BITSY)
+	/* Set GPIO8 (in GPIO port A) to 'output push-pull'. */
+  #define LED_INIT() {                                             \
+  	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;	/* Enable PortA clock */ \
+	  GPIOA->MODER |= GPIO_MODER_MODER8_0;	/* Port A.08 output */   \
+  }
+  #define LED_OFF() { GPIOA->BSRR = (1 << 8); }
+  #define LED_ON() { GPIOA->BSRR = (1 << (8 + 16)); }
+#elif defined(ENV_SAML21_XPRO)
+  #define LED_INIT() { REG_PORT_DIR1 |= PORT_PB10; }
+  #define LED_OFF() { REG_PORT_OUT1 |= PORT_PB10; }
+  #define LED_ON() { REG_PORT_OUT1 &= PORT_PB10; }
+#elif  defined(ENV_FEATHER_M0)
+  #define LED_INIT() { REG_PORT_DIR0|= PORT_PA17; }
+  #define LED_OFF() { REG_PORT_OUT0 |= PORT_PA17; }
+  #define LED_ON() { REG_PORT_OUT0 &= PORT_PA17; }
+#else
+#error Unknown build environment. Please define an ENV_XYZ flag and LED control macros.
+#endif
 
 void toggleLED() {
   static bool led = false;
   led = !led;
 
   if (led) {
-    REG_PORT_OUT0 &= ~LED_PORT;
+    LED_ON();
   }
   else {
-    REG_PORT_OUT0 |= LED_PORT;
+    LED_OFF();
   }
 }
 
@@ -41,7 +57,7 @@ static void setupTasks(void) {
 static void init() {
   SystemInit(); // SAM init
 
-  REG_PORT_DIR0 |= LED_PORT;
+  LED_INIT();
 }
 
 int main() {
@@ -56,4 +72,3 @@ int main() {
   for( ;; ) {
   }
 }
-
